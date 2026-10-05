@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="股票停利停損與15%滾動停損計算器" />
+  <title>股票停利停損計算器</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#172033;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --accent:#2563eb;
+      --accent-soft:#eff6ff;
+      --green:#059669;
+      --red:#dc2626;
+      --amber:#d97706;
+      --purple:#7c3aed;
+      --shadow:0 14px 40px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+      background:linear-gradient(180deg,#f8fafc 0%,#eef3f9 100%);
+      color:var(--text);
+      min-height:100vh;
+    }
+    .wrap{
+      width:min(980px,calc(100% - 28px));
+      margin:40px auto;
+    }
+    .hero{
+      text-align:center;
+      margin-bottom:24px;
+    }
+    .hero h1{
+      margin:0;
+      font-size:clamp(28px,5vw,46px);
+      line-height:1.15;
+      letter-spacing:-.03em;
+    }
+    .hero p{
+      margin:10px auto 0;
+      color:var(--muted);
+      max-width:720px;
+      font-size:15px;
+      line-height:1.7;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+      align-items:start;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:22px;
+      box-shadow:var(--shadow);
+    }
+    .card h2,.card h3{
+      margin:0 0 8px;
+    }
+    .sub{
+      color:var(--muted);
+      font-size:14px;
+      margin-bottom:18px;
+      line-height:1.6;
+    }
+    label{
+      display:block;
+      font-weight:700;
+      font-size:14px;
+      margin:14px 0 7px;
+    }
+    input{
+      width:100%;
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:13px 14px;
+      font-size:16px;
+      color:var(--text);
+      background:#fff;
+      outline:none;
+      transition:.2s;
+    }
+    input:focus{
+      border-color:#93c5fd;
+      box-shadow:0 0 0 4px rgba(37,99,235,.10);
+    }
+    .two{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .hint{
+      margin-top:6px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    button{
+      width:100%;
+      margin-top:18px;
+      border:0;
+      border-radius:14px;
+      padding:14px 16px;
+      background:var(--accent);
+      color:#fff;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+      transition:.2s;
+    }
+    button:hover{filter:brightness(.96)}
+    .error{
+      min-height:20px;
+      color:var(--red);
+      font-size:13px;
+      margin-top:10px;
+    }
+    .result-list{
+      display:grid;
+      gap:12px;
+    }
+    .result{
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:16px;
+      background:#fff;
+    }
+    .result .label{
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+    .result .value{
+      font-size:32px;
+      font-weight:900;
+      margin:4px 0 3px;
+      letter-spacing:-.02em;
+    }
+    .result small{color:var(--muted)}
+    .fixed .value{color:var(--red)}
+    .profit .value{color:var(--green)}
+    .trail .value{color:var(--purple)}
+    .summary{
+      margin-top:12px;
+      background:var(--accent-soft);
+      border:1px solid #dbeafe;
+      border-radius:18px;
+      padding:16px;
+      line-height:1.7;
+      font-size:14px;
+    }
+    .chart-card{
+      margin-top:20px;
+    }
+    .chart-wrap{
+      overflow-x:auto;
+      padding-bottom:4px;
+    }
+    svg{
+      width:100%;
+      min-width:620px;
+      height:auto;
+      display:block;
+    }
+    .legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px 18px;
+      margin:12px 0 0;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .dot{
+      display:inline-block;
+      width:10px;height:10px;border-radius:999px;
+      margin-right:5px;
+      vertical-align:-1px;
+    }
+    .note{
+      margin-top:16px;
+      text-align:center;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+    @media (max-width:760px){
+      .wrap{margin:24px auto}
+      .grid{grid-template-columns:1fr}
+      .card{padding:18px;border-radius:18px}
+      .two{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>股票停利停損計算器</h1>
+      <p>輸入買進價、持有期間最高價、停損比例與停利比例，自動計算固定停損、停利目標與滾動停損價格。</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>輸入價格</h2>
+        <div class="sub">適合用來計算一般停損／停利，以及 15% 滾動停損。</div>
+
+        <form id="calcForm">
+          <label for="buyPrice">買進價</label>
+          <input id="buyPrice" type="number" inputmode="decimal" min="0.01" step="0.01" value="100" />
+
+          <label for="highPrice">持有期間最高價</label>
+          <input id="highPrice" type="number" inputmode="decimal" min="0.01" step="0.01" value="150" />
+          <div class="hint">如果還沒上漲，可先填跟買進價一樣。</div>
+
+          <div class="two">
+            <div>
+              <label for="stopLossPct">停損比例 %</label>
+              <input id="stopLossPct" type="number" min="0" max="99" step="0.1" value="15" />
+            </div>
+            <div>
+              <label for="takeProfitPct">停利比例 %</label>
+              <input id="takeProfitPct" type="number" min="0" max="1000" step="0.1" value="20" />
+            </div>
+          </div>
+
+          <button type="submit">重新計算</button>
+          <div class="error" id="error" aria-live="polite"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>計算結果</h2>
+        <div class="sub">價格會依你的設定即時更新。</div>
+
+        <div class="result-list">
+          <div class="result fixed">
+            <div class="label">固定停損價</div>
+            <div class="value" id="fixedStop">85.00</div>
+            <small id="fixedStopText">買進價往下 15%</small>
+          </div>
+
+          <div class="result profit">
+            <div class="label">停利目標價</div>
+            <div class="value" id="takeProfit">120.00</div>
+            <small id="takeProfitText">買進價上漲 20%</small>
+          </div>
+
+          <div class="result trail">
+            <div class="label">滾動停損價</div>
+            <div class="value" id="trailingStop">127.50</div>
+            <small id="trailingStopText">最高價 150 × 85%</small>
+          </div>
+        </div>
+
+        <div class="summary" id="summary">
+          100 元買進，跌到 85 元是固定停損；漲到 120 元達到停利目標；若最高曾到 150 元，15% 滾動停損線會提高到 127.5 元。
+        </div>
+      </div>
+    </section>
+
+    <section class="card chart-card">
+      <h3>價格區間圖</h3>
+      <div class="sub">越往右代表價格越高。</div>
+      <div class="chart-wrap">
+        <svg id="priceChart" viewBox="0 0 760 180" role="img" aria-label="停利停損價格區間圖">
+          <line x1="70" y1="90" x2="690" y2="90" stroke="#d1d5db" stroke-width="6" stroke-linecap="round"></line>
+          <g id="markers"></g>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:#dc2626"></i>固定停損</span>
+        <span><i class="dot" style="background:#2563eb"></i>買進價</span>
+        <span><i class="dot" style="background:#059669"></i>停利</span>
+        <span><i class="dot" style="background:#7c3aed"></i>滾動停損</span>
+      </div>
+    </section>
+
+    <p class="note">※ 僅供價格與風險管理試算，不代表任何投資建議。滾動停損通常以「持有期間最高價」為基準。</p>
+  </main>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const form = $('calcForm');
+      const buyEl = $('buyPrice');
+      const highEl = $('highPrice');
+      const slEl = $('stopLossPct');
+      const tpEl = $('takeProfitPct');
+      const errorEl = $('error');
+      const markers = $('markers');
+
+      const num = (v) => Number.parseFloat(v);
+      const fmt = (v) => Number.isFinite(v)
+        ? v.toLocaleString('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2})
+        : '—';
+
+      function calculate(e){
+        if(e) e.preventDefault();
+
+        let buy = num(buyEl.value);
+        let high = num(highEl.value);
+        let sl = num(slEl.value);
+        let tp = num(tpEl.value);
+
+        if (![buy,high,sl,tp].every(Number.isFinite) || buy <= 0 || high <= 0 || sl < 0 || sl >= 100 || tp < 0) {
+          errorEl.textContent = '請輸入有效數字；價格需大於 0，停損比例需介於 0～99%。';
+          return;
+        }
+
+        errorEl.textContent = '';
+        if (high < buy) high = buy;
+
+        const fixed = buy * (1 - sl/100);
+        const profit = buy * (1 + tp/100);
+        const trailing = high * (1 - sl/100);
+
+        $('fixedStop').textContent = fmt(fixed);
+        $('takeProfit').textContent = fmt(profit);
+        $('trailingStop').textContent = fmt(trailing);
+
+        $('fixedStopText').textContent = `買進價往下 ${sl}%`;
+        $('takeProfitText').textContent = `買進價上漲 ${tp}%`;
+        $('trailingStopText').textContent = `最高價 ${fmt(high)} × ${(100-sl).toFixed(1)}%`;
+
+        $('summary').textContent =
+          `${fmt(buy)} 元買進，跌到 ${fmt(fixed)} 元是固定停損；` +
+          `漲到 ${fmt(profit)} 元達到停利目標；` +
+          `若最高曾到 ${fmt(high)} 元，${sl}% 滾動停損線會提高到 ${fmt(trailing)} 元。`;
+
+        draw({fixed,buy,profit,trailing});
+      }
+
+      function draw(vals){
+        markers.innerHTML = '';
+
+        const data = [
+          {label:'固定停損',value:vals.fixed,color:'#dc2626',yText:58},
+          {label:'買進',value:vals.buy,color:'#2563eb',yText:132},
+          {label:'停利',value:vals.profit,color:'#059669',yText:58},
+          {label:'滾動停損',value:vals.trailing,color:'#7c3aed',yText:132}
+        ];
+
+        const values = data.map(d => d.value);
+        let min = Math.min(...values);
+        let max = Math.max(...values);
+        const pad = Math.max((max-min)*0.15,max*0.05,1);
+        min = Math.max(0,min-pad);
+        max += pad;
+
+        const x = (v) => 70 + ((v-min)/(max-min || 1))*620;
+
+        data.forEach((d) => {
+          const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+          const cx = x(d.value);
+
+          const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+          line.setAttribute('x1',cx);
+          line.setAttribute('x2',cx);
+          line.setAttribute('y1','72');
+          line.setAttribute('y2','108');
+          line.setAttribute('stroke',d.color);
+          line.setAttribute('stroke-width','2');
+          line.setAttribute('opacity','.35');
+
+          const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+          circle.setAttribute('cx',cx);
+          circle.setAttribute('cy','90');
+          circle.setAttribute('r','9');
+          circle.setAttribute('fill',d.color);
+
+          const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+          label.setAttribute('x',cx);
+          label.setAttribute('y',d.yText);
+          label.setAttribute('text-anchor','middle');
+          label.setAttribute('font-size','13');
+          label.setAttribute('font-weight','700');
+          label.setAttribute('fill','#172033');
+          label.textContent = `${d.label} ${fmt(d.value)}`;
+
+          g.append(line,circle,label);
+          markers.appendChild(g);
+        });
+      }
+
+      form.addEventListener('submit',calculate);
+      [buyEl,highEl,slEl,tpEl].forEach(el => el.addEventListener('input',calculate));
+      calculate();
+    })();
+  </script>
+</body>
+</html>
